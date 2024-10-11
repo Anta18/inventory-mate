@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+/* .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #2d3748;
+    border-radius: 10px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #718096;
+    border-radius: 10px;
+  }
+  
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #718096 #2d3748;
+    border-radius: 10px;
+  } */
+
+
+  /* Custom scrollbar styling for the left side */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 9px; /* Vertical scrollbar width */
+    height: 9px; /* Horizontal scrollbar height */
+  }
+  
+  /* Styling for the scrollbar track */
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #2d3748; /* Light gray background */
+    border-radius: 10px; /* Make the track rounded */
+  }
+  
+  /* Styling for the scrollbar handle (thumb) */
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #718096; /* Darker gray for the scrollbar handle */
+    border-radius: 10px; /* Make the scrollbar handle rounded */
+ /* Adds space between the scrollbar and the track */
+  }
+  
+  /* Darken the scrollbar handle on hover */
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: #445774; /* Darken the scrollbar handle on hover */
+  }

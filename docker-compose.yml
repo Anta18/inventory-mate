@@ -1,0 +1,30 @@
+version: '2.29.2'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_BACKEND_URL: ${FRONTEND_VITE_BACKEND_URL}
+    ports:
+      - "80:80" 
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000" 
+    env_file:
+      - ./backend/config/.env
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
