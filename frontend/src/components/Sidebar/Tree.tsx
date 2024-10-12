@@ -1,10 +1,16 @@
+// src/components/Sidebar/Tree.tsx
+
 import React, { useState, useCallback } from "react";
 import { TreeItem } from "../../types";
-import { Menu, X } from "lucide-react";
+import { X } from "lucide-react";
 import TreeNode from "./TreeNode";
+import LoadingSkeleton from "../LoadingSkeleton";
+import ErrorMessage from "../ErrorMessage";
 
 interface TreeProps {
   data: TreeItem[];
+  loading: boolean;
+  error: string;
   onSelect: (item: TreeItem) => void;
   selectedItem: TreeItem | null;
   searchQuery: string;
@@ -15,6 +21,8 @@ interface TreeProps {
 
 const Tree: React.FC<TreeProps> = ({
   data,
+  loading,
+  error,
   onSelect,
   selectedItem,
   searchQuery,
@@ -22,6 +30,25 @@ const Tree: React.FC<TreeProps> = ({
   isSidebarOpen,
   setIsSidebarOpen,
 }) => {
+  if (loading) {
+    return (
+      <div className="p-4">
+        <LoadingSkeleton />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4">
+        <ErrorMessage message={error} />
+      </div>
+    );
+  }
+
+  if (data.length === 0) {
+    return <div className="p-4 text-center text-gray-400">No items found.</div>;
+  }
   const [draggedItem, setDraggedItem] = useState<TreeItem | null>(null);
 
   const handleDragStart = useCallback((item: TreeItem) => {
@@ -108,20 +135,30 @@ const Tree: React.FC<TreeProps> = ({
     <div
       className={`bg-gray-900 text-white h-full w-full ${
         isSidebarOpen ? "block" : "hidden"
-      } lg:block`}
+      } sm:block`}
     >
       <div className="flex flex-col h-full">
         <div className="p-4 flex justify-between items-center">
-          <h2 className="text-lg font-bold lg:pl-4 md:pl-4">Godowns</h2>
+          <h2 className="text-lg font-bold sm:pl-4">Godowns</h2>
           <button
             onClick={() => setIsSidebarOpen(false)}
-            className="text-white focus:outline-none lg:hidden md:hidden"
+            className="text-white focus:outline-none sm:hidden"
           >
             <X className="h-6 w-6" />
           </button>
         </div>
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {data.length > 0 ? (
+          {loading && (
+            <div className="p-4">
+              <LoadingSkeleton />
+            </div>
+          )}
+          {error && (
+            <div className="p-4">
+              <ErrorMessage message={error} />
+            </div>
+          )}
+          {!loading && !error && data.length > 0 ? (
             renderTree(data)
           ) : (
             <div className="p-4 text-center text-gray-400">No items found.</div>

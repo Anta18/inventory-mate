@@ -1,9 +1,9 @@
 // src/components/Dashboard/Dashboard.tsx
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import Navbar from "../Navbar";
 import Tree from "../Sidebar/Tree";
 import ItemDetails from "./ItemDetails";
-import Navbar from "../Navbar"; // Import Navbar
 import axiosInstance from "../../api/axiosInstance";
 import { TreeItem, Location } from "../../types";
 import debounce from "lodash.debounce";
@@ -11,102 +11,217 @@ import { Menu } from "lucide-react";
 
 const Dashboard: React.FC = () => {
   // State declarations
-  const [treeData, setTreeData] = useState<TreeItem[]>([]);
   const [filteredTreeData, setFilteredTreeData] = useState<TreeItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<TreeItem | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false); // Changed default to false for small devices
 
   // States for search and filters
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [filterType, setFilterType] = useState<string>("All");
+  const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [brandFilter, setBrandFilter] = useState<string>("All");
+  const [minPrice, setMinPrice] = useState<number | "">("");
+  const [maxPrice, setMaxPrice] = useState<number | "">("");
+  const [minQuantity, setMinQuantity] = useState<number | "">("");
+  const [maxQuantity, setMaxQuantity] = useState<number | "">("");
   const [categories, setCategories] = useState<string[]>(["All"]);
+  const [brands, setBrands] = useState<string[]>(["All"]);
+  const [statuses, setStatuses] = useState<string[]>(["All"]);
 
-  // Fetch tree data on component mount
-  useEffect(() => {
-    // Helper function to recursively collect categories
-    const collectCategories = (items: TreeItem[], categorySet: Set<string>) => {
-      items.forEach((item) => {
-        if (item.type === "item" && item.itemDetails?.category) {
-          categorySet.add(item.itemDetails.category);
+  // Function to convert Location to TreeItem
+  const convertLocationsToTreeItems = (locations: Location[]): TreeItem[] => {
+    return locations
+      .map((loc): TreeItem | null => {
+        // Recursively convert sub-godowns
+        const subGodowns = loc.subGodowns
+          ? convertLocationsToTreeItems(loc.subGodowns)
+          : [];
+
+        // Map items to TreeItem objects
+        const items = loc.items
+          ? loc.items.map(
+              (item): TreeItem => ({
+                _id: item._id,
+                name: item.name,
+                type: "item",
+                itemDetails: item,
+                shouldExpand: false,
+              })
+            )
+          : [];
+
+        // Combine sub-godowns and items
+        const children = [...subGodowns, ...items];
+
+        // If no children, exclude this godown
+        if (children.length === 0) {
+          return null;
         }
-        if (item.children) {
-          collectCategories(item.children, categorySet);
-        }
-      });
-    };
 
-    // Fetch tree data from backend
-    const fetchTreeData = async () => {
-      try {
-        const response = await axiosInstance.get("/godown"); // Adjusted endpoint
-        const locations: Location[] = response.data;
-
-        // Convert Location[] to TreeItem[]
-        const convertLocationsToTreeItems = (
-          locations: Location[]
-        ): TreeItem[] => {
-          return locations.map(
-            (loc): TreeItem => ({
-              _id: loc._id,
-              name: loc.name,
-              type: "location",
-              shouldExpand: false,
-              isSubGodown: !(loc.subGodowns && loc.subGodowns.length > 0),
-              children: [
-                ...(loc.subGodowns
-                  ? convertLocationsToTreeItems(loc.subGodowns)
-                  : []),
-                ...(loc.items
-                  ? loc.items.map(
-                      (item): TreeItem => ({
-                        _id: item._id,
-                        name: item.name,
-                        type: "item",
-                        itemDetails: item,
-                        shouldExpand: false,
-                      })
-                    )
-                  : []),
-              ],
-            })
-          );
+        return {
+          _id: loc._id,
+          name: loc.name,
+          type: "location",
+          shouldExpand: false,
+          isSubGodown: !(loc.subGodowns && loc.subGodowns.length > 0),
+          children: children,
         };
+      })
+      .filter((item): item is TreeItem => item !== null);
+  };
 
-        const treeItems = convertLocationsToTreeItems(locations);
-        setTreeData(treeItems);
-        setFilteredTreeData(treeItems); // Initialize filtered data
+  // Fetch all data or based on filters
+  const fetchTreeData = useCallback(async () => {
+    setLoading(true);
+    setError("");
 
-        // Collect unique categories
-        const categorySet = new Set<string>();
-        collectCategories(treeItems, categorySet);
-        setCategories(["All", ...Array.from(categorySet).sort()]);
-      } catch (error) {
-        console.error("Error fetching tree data:", error);
-        setError("Failed to load tree data.");
-      } finally {
-        setLoading(false);
+    try {
+      // Build query parameters for filtering
+      const params: Record<string, string> = {};
+
+      if (filterType && filterType !== "All") {
+        params.category = filterType;
       }
-    };
 
+      if (statusFilter && statusFilter !== "All") {
+        params.status = statusFilter;
+      }
+
+      if (brandFilter && brandFilter !== "All") {
+        params.brand = brandFilter;
+      }
+
+      if (minPrice !== "") {
+        params.minPrice = String(minPrice);
+      }
+
+      if (maxPrice !== "") {
+        params.maxPrice = String(maxPrice);
+      }
+
+      if (minQuantity !== "") {
+        params.minQuantity = String(minQuantity);
+      }
+
+      if (maxQuantity !== "") {
+        params.maxQuantity = String(maxQuantity);
+      }
+
+      const response = await axiosInstance.get("godown/search/filtered", {
+        params,
+      });
+      const locations: Location[] = response.data;
+
+      const treeItems = convertLocationsToTreeItems(locations);
+      setFilteredTreeData(treeItems);
+
+      // Update categories, brands, and statuses based on fetched data
+      const categorySet = new Set<string>();
+      const brandSet = new Set<string>();
+      const statusSet = new Set<string>();
+
+      const collectFilters = (items: TreeItem[]) => {
+        items.forEach((item) => {
+          if (item.type === "item" && item.itemDetails) {
+            if (item.itemDetails.category) {
+              categorySet.add(item.itemDetails.category);
+            }
+            if (item.itemDetails.brand) {
+              brandSet.add(item.itemDetails.brand);
+            }
+            if (item.itemDetails.status) {
+              statusSet.add(item.itemDetails.status);
+            }
+          }
+          if (item.children) {
+            collectFilters(item.children);
+          }
+        });
+      };
+
+      collectFilters(treeItems);
+
+      setCategories(["All", ...Array.from(categorySet).sort()]);
+      setBrands(["All", ...Array.from(brandSet).sort()]);
+      setStatuses(["All", ...Array.from(statusSet).sort()]);
+    } catch (error: any) {
+      console.error("Error fetching tree data:", error);
+      setError("Failed to load tree data.");
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    filterType,
+    statusFilter,
+    brandFilter,
+    minPrice,
+    maxPrice,
+    minQuantity,
+    maxQuantity,
+  ]);
+
+  // Fetch data on component mount and when filters change
+  useEffect(() => {
     fetchTreeData();
-  }, []);
+  }, [fetchTreeData]);
 
   // Debounced search handler to optimize performance
-  const handleSearch = useCallback(
-    debounce((query: string) => {
-      setSearchQuery(query);
-      if (query) {
-        setIsSidebarOpen(true);
-      }
-    }, 150),
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((query: string) => {
+        setSearchQuery(query);
+        if (query) {
+          setIsSidebarOpen(true);
+        }
+      }, 100),
     []
   );
 
-  const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleSearchChange = (query: string) => {
+    debouncedSearch(query);
+  };
+
+  // Handlers for additional filters
+  const handleFilterTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setFilterType(e.target.value);
   };
+
+  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setStatusFilter(e.target.value);
+  };
+
+  const handleBrandChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setBrandFilter(e.target.value);
+  };
+
+  const handleMinPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setMinPrice(value === "" ? "" : parseFloat(value));
+  };
+
+  const handleMaxPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setMaxPrice(value === "" ? "" : parseFloat(value));
+  };
+
+  const handleMinQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setMinQuantity(value === "" ? "" : parseInt(value, 10));
+  };
+
+  const handleMaxQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setMaxQuantity(value === "" ? "" : parseInt(value, 10));
+  };
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
 
   // Helper function to find an item by its ID
   const findItemById = useCallback(
@@ -125,222 +240,6 @@ const Dashboard: React.FC = () => {
     []
   );
 
-  // Effect to filter tree data based on searchQuery and filterType
-  // useEffect(() => {
-  //   if (!searchQuery && filterType === "All") {
-  //     // Reset shouldExpand for all nodes
-  //     const resetExpand = (items: TreeItem[]): TreeItem[] => {
-  //       return items.map((item) => ({
-  //         ...item,
-  //         shouldExpand: false,
-  //         children: item.children ? resetExpand(item.children) : [],
-  //       }));
-  //     };
-  //     setFilteredTreeData(resetExpand(treeData));
-  //     return;
-  //   }
-
-  //   const filterTree = (items: TreeItem[]): TreeItem[] => {
-  //     return items
-  //       .map((item) => {
-  //         if (item.type === "item") {
-  //           const matchesFilter =
-  //             filterType === "All" ||
-  //             (item.itemDetails?.category &&
-  //               item.itemDetails.category.toLowerCase() ===
-  //                 filterType.toLowerCase());
-
-  //           const matchesSearch = searchQuery
-  //             ? item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-  //               (item.itemDetails &&
-  //                 Object.values(item.itemDetails.attributes || {}).some(
-  //                   (attr) =>
-  //                     String(attr)
-  //                       .toLowerCase()
-  //                       .includes(searchQuery.toLowerCase())
-  //                 ))
-  //             : true; // If no searchQuery, consider it as a match
-
-  //           if (matchesFilter && matchesSearch) {
-  //             return { ...item, shouldExpand: false };
-  //           }
-  //           return null;
-  //         } else if (item.type === "location" && item.children) {
-  //           if (searchQuery) {
-  //             const locationMatchesSearch = item.name
-  //               .toLowerCase()
-  //               .includes(searchQuery.toLowerCase());
-
-  //             if (locationMatchesSearch) {
-  //               // If the location itself matches, include all its children without filtering
-  //               // Also, set shouldExpand to true
-  //               const filteredChildren =
-  //                 filterType !== "All"
-  //                   ? item.children.filter((child) => {
-  //                       if (child.type === "item") {
-  //                         return (
-  //                           child.itemDetails?.category &&
-  //                           child.itemDetails.category.toLowerCase() ===
-  //                             filterType.toLowerCase()
-  //                         );
-  //                       }
-  //                       return true; // For sublocations, include them as is
-  //                     })
-  //                   : item.children;
-
-  //               return {
-  //                 ...item,
-  //                 children: filteredChildren,
-  //                 shouldExpand: true,
-  //               };
-  //             } else {
-  //               // If the location doesn't match, filter its children
-  //               const filteredChildren = filterTree(item.children);
-  //               if (filteredChildren.length > 0) {
-  //                 return {
-  //                   ...item,
-  //                   children: filteredChildren,
-  //                   shouldExpand: true,
-  //                 };
-  //               }
-  //               return null;
-  //             }
-  //           } else {
-  //             // When searchQuery is empty but filterType is not "All"
-  //             // Recursively filter children
-  //             const filteredChildren =
-  //               filterType !== "All"
-  //                 ? filterTree(item.children)
-  //                 : item.children;
-
-  //             if (filterType !== "All") {
-  //               if (filteredChildren.length > 0) {
-  //                 return {
-  //                   ...item,
-  //                   children: filteredChildren,
-  //                   shouldExpand: false, // Do not expand when only filtering
-  //                 };
-  //               }
-  //             } else {
-  //               // When filterType is "All" but searchQuery is empty, handled earlier
-  //               return null;
-  //             }
-  //             return null;
-  //           }
-  //         }
-  //         return null;
-  //       })
-  //       .filter((item): item is TreeItem => item !== null); // Type predicate here
-  //   };
-
-  //   const newFilteredData = filterTree(treeData);
-  //   setFilteredTreeData(newFilteredData);
-  // }, [searchQuery, filterType, treeData]);
-
-  useEffect(() => {
-    if (!searchQuery && filterType === "All") {
-      // Reset shouldExpand for all nodes
-      const resetExpand = (items: TreeItem[]): TreeItem[] => {
-        return items.map((item) => ({
-          ...item,
-          shouldExpand: false,
-          children: item.children ? resetExpand(item.children) : [],
-        }));
-      };
-      setFilteredTreeData(resetExpand(treeData));
-      return;
-    }
-
-    const filterTree = (items: TreeItem[]): TreeItem[] => {
-      return items
-        .map((item) => {
-          if (item.type === "item") {
-            const matchesFilter =
-              filterType === "All" ||
-              (item.itemDetails?.category &&
-                item.itemDetails.category.toLowerCase() ===
-                  filterType.toLowerCase());
-
-            const matchesSearch = searchQuery
-              ? item.name.toLowerCase().includes(searchQuery.toLowerCase())
-              : true; // If no searchQuery, consider it as a match
-
-            if (matchesFilter && matchesSearch) {
-              return { ...item, shouldExpand: false };
-            }
-            return null;
-          } else if (item.type === "location" && item.children) {
-            if (searchQuery) {
-              const locationMatchesSearch = item.name
-                .toLowerCase()
-                .includes(searchQuery.toLowerCase());
-
-              if (locationMatchesSearch) {
-                // If the location itself matches, include all its children without filtering
-                // Also, set shouldExpand to true
-                const filteredChildren =
-                  filterType !== "All"
-                    ? item.children.filter((child) => {
-                        if (child.type === "item") {
-                          return (
-                            child.itemDetails?.category &&
-                            child.itemDetails.category.toLowerCase() ===
-                              filterType.toLowerCase()
-                          );
-                        }
-                        return true; // For sublocations, include them as is
-                      })
-                    : item.children;
-
-                return {
-                  ...item,
-                  children: filteredChildren,
-                  shouldExpand: true,
-                };
-              } else {
-                // If the location doesn't match, filter its children
-                const filteredChildren = filterTree(item.children);
-                if (filteredChildren.length > 0) {
-                  return {
-                    ...item,
-                    children: filteredChildren,
-                    shouldExpand: true,
-                  };
-                }
-                return null;
-              }
-            } else {
-              // When searchQuery is empty but filterType is not "All"
-              // Recursively filter children
-              const filteredChildren =
-                filterType !== "All"
-                  ? filterTree(item.children)
-                  : item.children;
-
-              if (filterType !== "All") {
-                if (filteredChildren.length > 0) {
-                  return {
-                    ...item,
-                    children: filteredChildren,
-                    shouldExpand: false, // Do not expand when only filtering
-                  };
-                }
-              } else {
-                // When filterType is "All" but searchQuery is empty, handled earlier
-                return null;
-              }
-              return null;
-            }
-          }
-          return null;
-        })
-        .filter((item): item is TreeItem => item !== null); // Type predicate here
-    };
-
-    const newFilteredData = filterTree(treeData);
-    setFilteredTreeData(newFilteredData);
-  }, [searchQuery, filterType, treeData]);
-
   const handleSelect = (item: TreeItem) => {
     setSelectedItem(item);
   };
@@ -355,16 +254,15 @@ const Dashboard: React.FC = () => {
 
       if (response.status === 200) {
         // Update the tree data to reflect the move
-        const updatedTreeData = updateTreeDataAfterMove(
-          treeData,
+        const updatedFilteredData = updateTreeDataAfterMove(
+          filteredTreeData,
           itemId,
           newParentId
         );
-        setTreeData(updatedTreeData);
-        setFilteredTreeData(updatedTreeData);
+        setFilteredTreeData(updatedFilteredData);
 
         // Find the moved item in the updated tree
-        const movedItem = findItemById(updatedTreeData, itemId);
+        const movedItem = findItemById(updatedFilteredData, itemId);
 
         if (movedItem) {
           setSelectedItem(movedItem);
@@ -421,7 +319,7 @@ const Dashboard: React.FC = () => {
             children: item.children
               ? [...item.children, movedItem]
               : [movedItem],
-            shouldExpand: false, // Optionally set to true to show the new child
+            shouldExpand: true, // Ensure the parent is expanded to show the new child
           };
         }
 
@@ -451,41 +349,93 @@ const Dashboard: React.FC = () => {
     return treeAfterAddition;
   };
 
-  // Render loading state
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen text-white">
-        Loading...
-      </div>
-    );
-  }
+  // Compute displayed data by applying frontend search on filtered data
+  const displayedTreeData = useMemo(() => {
+    if (!searchQuery) {
+      return filteredTreeData;
+    }
 
-  // Render error state
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-screen text-red-500">
-        {error}
-      </div>
-    );
-  }
+    const searchLower = searchQuery.toLowerCase();
+
+    // Recursive function to filter tree data based on search query
+    const filterTree = (items: TreeItem[]): TreeItem[] => {
+      return items
+        .map((item) => {
+          const itemNameLower = item.name.toLowerCase();
+          const isItemMatch =
+            item.type === "item" && itemNameLower.includes(searchLower);
+          const isLocationMatch =
+            item.type === "location" && itemNameLower.includes(searchLower);
+
+          if (item.type === "item") {
+            return isItemMatch ? { ...item } : null;
+          }
+
+          if (item.type === "location" && item.children) {
+            if (isLocationMatch) {
+              // If the location itself matches, include all its children but do NOT expand it
+              return {
+                ...item,
+                children: item.children, // Include all children
+                shouldExpand: false, // Do not expand
+              };
+            }
+
+            // Otherwise, filter the children
+            const filteredChildren = filterTree(item.children);
+
+            if (filteredChildren.length > 0) {
+              // If any child matches, include the location and expand it
+              return {
+                ...item,
+                children: filteredChildren,
+                shouldExpand: true, // Expand to show matching children
+              };
+            }
+
+            // If neither the location nor its children match, exclude it
+            return null;
+          }
+
+          return null;
+        })
+        .filter((item): item is TreeItem => item !== null);
+    };
+
+    return filterTree(filteredTreeData);
+  }, [searchQuery, filteredTreeData]);
 
   return (
     <div className="flex flex-col h-screen bg-black">
       {/* Navbar */}
       <Navbar
         searchQuery={searchQuery}
-        onSearchChange={handleSearch}
+        onSearchChange={handleSearchChange}
         filterType={filterType}
-        onFilterChange={handleFilterChange}
+        onFilterTypeChange={handleFilterTypeChange}
+        statusFilter={statusFilter}
+        onStatusChange={handleStatusChange}
+        brandFilter={brandFilter}
+        onBrandChange={handleBrandChange}
+        minPrice={minPrice}
+        onMinPriceChange={handleMinPriceChange}
+        maxPrice={maxPrice}
+        onMaxPriceChange={handleMaxPriceChange}
+        minQuantity={minQuantity}
+        onMinQuantityChange={handleMinQuantityChange}
+        maxQuantity={maxQuantity}
+        onMaxQuantityChange={handleMaxQuantityChange}
         categories={categories}
+        brands={brands}
+        statuses={statuses}
         setIsSidebarOpen={setIsSidebarOpen}
       />
 
       {/* Hamburger menu for small devices */}
-      <div className="lg:hidden md:hidden bg-gray-800 p-2 m-2 w-10 h-10 lg:p-0 lg:m-0">
+      <div className="sm:hidden bg-gray-800 p-2 m-2 w-10 h-10">
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="text-white focus:outline-none "
+          className="text-white focus:outline-none flex items-center"
         >
           <Menu className="h-6 w-6" />
         </button>
@@ -496,12 +446,14 @@ const Dashboard: React.FC = () => {
         <div
           className={`w-64 bg-gray-900 border-r overflow-auto custom-scrollbar ${
             isSidebarOpen
-              ? "fixed inset-y-0 left-0 z-50  mt-16 lg:mt-0 lg:relative lg:z-0"
+              ? "fixed inset-y-0 left-0 z-50 mt-16 sm:mt-0 sm:relative sm:z-0"
               : "hidden"
-          } lg:block md:block`}
+          } sm:block`}
         >
           <Tree
-            data={filteredTreeData}
+            data={displayedTreeData}
+            loading={loading}
+            error={error}
             onSelect={handleSelect}
             selectedItem={selectedItem}
             searchQuery={searchQuery}
@@ -520,7 +472,7 @@ const Dashboard: React.FC = () => {
       {/* Overlay for small devices when sidebar is open */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden md:hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 sm:hidden"
           onClick={() => setIsSidebarOpen(false)}
         ></div>
       )}

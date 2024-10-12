@@ -103,7 +103,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   const highlightedName = highlightMatch(item.name, searchQuery);
 
   return (
-    <div>
+    <div className="relative">
       <div
         role="treeitem"
         aria-expanded={hasChildren ? isExpanded : undefined}
@@ -134,7 +134,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
         {level > 0 && (
           <div
             className="absolute left-0 top-0 bottom-0 border-l border-gray-600"
-            style={{ left: `${(level - 1) * 20 + 10}px` }}
+            style={{ left: `${(level - 1) * 20 + 16}px` }}
           ></div>
         )}
         {item.type === "location" ? (
@@ -166,8 +166,12 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.4, ease: "easeOut" }}
-              className="overflow-hidden"
+              className="overflow-hidden relative"
             >
+              <div
+                className="absolute left-0 top-0 bottom-0 border-l border-gray-600"
+                style={{ left: `${level * 20 + 16}px` }}
+              ></div>
               {children}
             </motion.div>
           )}

@@ -361,9 +361,7 @@ router.delete("/:id", auth, async (req, res) => {
   }
 });
 
-// router.js or the relevant router file
-
-router.get("/filtered", auth, async (req, res) => {
+router.get("/search/filtered", auth, async (req, res) => {
   try {
     // Extract query parameters
     const {
@@ -381,9 +379,7 @@ router.get("/filtered", auth, async (req, res) => {
     let itemFilter = {};
 
     if (status) {
-      // Assuming status can be multiple values separated by commas
-      const statusArray = status.split(",").map((s) => s.trim());
-      itemFilter.status = { $in: statusArray };
+      itemFilter.status = { $in: status };
     }
 
     if (category) {
