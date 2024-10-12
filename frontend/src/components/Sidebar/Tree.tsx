@@ -9,6 +9,8 @@ interface TreeProps {
   selectedItem: TreeItem | null;
   searchQuery: string;
   onItemMove: (itemId: string, newParentId: string) => void;
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (isOpen: boolean) => void;
 }
 
 const Tree: React.FC<TreeProps> = ({
@@ -17,8 +19,9 @@ const Tree: React.FC<TreeProps> = ({
   selectedItem,
   searchQuery,
   onItemMove,
+  isSidebarOpen,
+  setIsSidebarOpen,
 }) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [draggedItem, setDraggedItem] = useState<TreeItem | null>(null);
 
   const handleDragStart = useCallback((item: TreeItem) => {
@@ -37,7 +40,6 @@ const Tree: React.FC<TreeProps> = ({
         if (targetItem.type === "location" && targetItem.isSubGodown === true) {
           newParentId = targetItem._id;
         } else if (targetItem.type === "item") {
-          // Find the immediate parent of the target item
           const findParent = (items: TreeItem[]): string | null => {
             for (const item of items) {
               if (
@@ -103,47 +105,30 @@ const Tree: React.FC<TreeProps> = ({
   );
 
   return (
-    <>
-      {/* Hamburger menu for small devices */}
-      <button
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-gray-800 rounded-md text-white focus:outline-none"
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-      >
-        {isSidebarOpen ? (
-          <X className="h-6 w-6" />
-        ) : (
-          <Menu className="h-6 w-6" />
-        )}
-      </button>
-
-      {/* Sidebar */}
-      <div
-        className={`fixed inset-y-0 left-0 z-40 w-64 lg:w-full bg-gray-900 text-white shadow-lg transform ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto lg:z-auto`}
-      >
-        <div className="flex flex-col h-full">
-          <h2 className="p-4 text-lg font-bold text-center">Godowns</h2>
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {data.length > 0 ? (
-              renderTree(data)
-            ) : (
-              <div className="p-4 text-center text-gray-400">
-                No items found.
-              </div>
-            )}
-          </div>
+    <div
+      className={`bg-gray-900 text-white h-full w-full ${
+        isSidebarOpen ? "block" : "hidden"
+      } lg:block`}
+    >
+      <div className="flex flex-col h-full">
+        <div className="p-4 flex justify-between items-center">
+          <h2 className="text-lg font-bold lg:pl-4 md:pl-4">Godowns</h2>
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="text-white focus:outline-none lg:hidden md:hidden"
+          >
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {data.length > 0 ? (
+            renderTree(data)
+          ) : (
+            <div className="p-4 text-center text-gray-400">No items found.</div>
+          )}
         </div>
       </div>
-
-      {/* Overlay for small devices when sidebar is open */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        ></div>
-      )}
-    </>
+    </div>
   );
 };
 

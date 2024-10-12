@@ -82,7 +82,7 @@ const ItemDetails: React.FC<ItemDetailsProps> = ({ item }) => {
               <img
                 src={image_url}
                 alt={name}
-                className="w-full max-w-sm h-64 object-cover bg-[#1f213f] rounded-lg"
+                className="w-full max-w-sm min-h-64 max-h-72 object-cover bg-[#1f213f] rounded-lg"
               />
             </motion.div>
           )}

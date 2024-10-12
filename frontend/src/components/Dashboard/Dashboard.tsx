@@ -7,6 +7,7 @@ import Navbar from "../Navbar"; // Import Navbar
 import axiosInstance from "../../api/axiosInstance";
 import { TreeItem, Location } from "../../types";
 import debounce from "lodash.debounce";
+import { Menu } from "lucide-react";
 
 const Dashboard: React.FC = () => {
   // State declarations
@@ -15,6 +16,7 @@ const Dashboard: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<TreeItem | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
 
   // States for search and filters
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -95,6 +97,9 @@ const Dashboard: React.FC = () => {
   const handleSearch = useCallback(
     debounce((query: string) => {
       setSearchQuery(query);
+      if (query) {
+        setIsSidebarOpen(true);
+      }
     }, 150),
     []
   );
@@ -472,18 +477,37 @@ const Dashboard: React.FC = () => {
         onSearchChange={handleSearch}
         filterType={filterType}
         onFilterChange={handleFilterChange}
-        categories={categories} // Pass categories here
+        categories={categories}
+        setIsSidebarOpen={setIsSidebarOpen}
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      {/* Hamburger menu for small devices */}
+      <div className="lg:hidden md:hidden bg-gray-800 p-2 m-2 w-10 h-10 lg:p-0 lg:m-0">
+        <button
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="text-white focus:outline-none "
+        >
+          <Menu className="h-6 w-6" />
+        </button>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden bg-gray-900">
         {/* Sidebar */}
-        <div className="w-0 lg:w-64 bg-gray-900 border-r overflow-auto custom-scrollbar">
+        <div
+          className={`w-64 bg-gray-900 border-r overflow-auto custom-scrollbar ${
+            isSidebarOpen
+              ? "fixed inset-y-0 left-0 z-50  mt-16 lg:mt-0 lg:relative lg:z-0"
+              : "hidden"
+          } lg:block md:block`}
+        >
           <Tree
             data={filteredTreeData}
             onSelect={handleSelect}
             selectedItem={selectedItem}
             searchQuery={searchQuery}
             onItemMove={handleItemMove}
+            isSidebarOpen={isSidebarOpen}
+            setIsSidebarOpen={setIsSidebarOpen}
           />
         </div>
 
@@ -492,6 +516,14 @@ const Dashboard: React.FC = () => {
           <ItemDetails item={selectedItem} />
         </div>
       </div>
+
+      {/* Overlay for small devices when sidebar is open */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        ></div>
+      )}
     </div>
   );
 };

@@ -361,4 +361,106 @@ router.delete("/:id", auth, async (req, res) => {
   }
 });
 
+// router.js or the relevant router file
+
+router.get("/filtered", auth, async (req, res) => {
+  try {
+    // Extract query parameters
+    const {
+      status,
+      category,
+      brand,
+      minPrice,
+      maxPrice,
+      minQuantity,
+      maxQuantity,
+      search,
+    } = req.query;
+
+    // Build the item filter object based on query parameters
+    let itemFilter = {};
+
+    if (status) {
+      // Assuming status can be multiple values separated by commas
+      const statusArray = status.split(",").map((s) => s.trim());
+      itemFilter.status = { $in: statusArray };
+    }
+
+    if (category) {
+      const categoryArray = category.split(",").map((c) => c.trim());
+      itemFilter.category = { $in: categoryArray };
+    }
+
+    if (brand) {
+      const brandArray = brand.split(",").map((b) => b.trim());
+      itemFilter.brand = { $in: brandArray };
+    }
+
+    if (minPrice || maxPrice) {
+      itemFilter.price = {};
+      if (minPrice) itemFilter.price.$gte = parseFloat(minPrice);
+      if (maxPrice) itemFilter.price.$lte = parseFloat(maxPrice);
+    }
+
+    if (minQuantity || maxQuantity) {
+      itemFilter.quantity = {};
+      if (minQuantity) itemFilter.quantity.$gte = parseInt(minQuantity, 10);
+      if (maxQuantity) itemFilter.quantity.$lte = parseInt(maxQuantity, 10);
+    }
+
+    if (search) {
+      // Case-insensitive search on the item name
+      itemFilter.name = { $regex: search, $options: "i" };
+    }
+
+    // Find all top-level godowns belonging to the logged-in user
+    const topLevelGodowns = await Godown.find({
+      owner: req.user._id,
+      parent_godown: null,
+    });
+
+    // Function to recursively fetch subgodowns and filtered items
+    async function getGodownStructure(godown) {
+      const subGodowns = await Godown.find({ parent_godown: godown._id });
+      const subGodownsData = await Promise.all(
+        subGodowns.map(async (subGodown) => {
+          // Apply the itemFilter and ensure items belong to the current subGodown
+          const items = await Item.find({
+            godown_id: subGodown._id,
+            ...itemFilter,
+          }).select(
+            "_id name quantity category brand price status image_url attributes"
+          );
+
+          return {
+            _id: subGodown._id,
+            name: subGodown.name,
+            subGodowns: await getGodownStructure(subGodown),
+            items: items,
+          };
+        })
+      );
+
+      return subGodownsData;
+    }
+
+    // Construct the final response with filtered items
+    const godownsWithFilteredItems = await Promise.all(
+      topLevelGodowns.map(async (godown) => ({
+        _id: godown._id,
+        name: godown.name,
+        subGodowns: await getGodownStructure(godown),
+      }))
+    );
+
+    res.json(godownsWithFilteredItems);
+  } catch (error) {
+    console.error("Error fetching filtered godowns:", error);
+    res.status(500).json({
+      message: "Error fetching filtered godowns",
+      error: error.message,
+    });
+  }
+});
+
 module.exports = router;
