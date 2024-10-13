@@ -36,10 +36,6 @@ const Dashboard: React.FC = () => {
     searchQuery,
     setSearchQuery,
     appliedFilters,
-    setAppliedFilters,
-    categories,
-    brands,
-    statuses,
     setCategories,
     setBrands,
     setStatuses,
@@ -115,7 +111,7 @@ const Dashboard: React.FC = () => {
       }
 
       if (status && status !== "All") {
-        params.status = status;
+        params.status = status === "In Stock" ? "in_stock" : "out_of_stock";
       }
 
       if (brand && brand !== "All") {
