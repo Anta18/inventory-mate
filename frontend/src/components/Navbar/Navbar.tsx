@@ -67,7 +67,7 @@ const Navbar: React.FC = () => {
   };
 
   return (
-    <nav className="bg-gray-800 p-4">
+    <nav className="bg-gray-800 p-4 ">
       <div className="container mx-auto flex flex-col md:flex-row lg:flex-row justify-between items-center">
         {/* Logo */}
         <div className="flex items-center justify-between w-full md:w-auto lg:w-auto">

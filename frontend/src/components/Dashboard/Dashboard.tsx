@@ -206,7 +206,7 @@ const Dashboard: React.FC = () => {
         if (query) {
           setIsSidebarOpen(true);
         }
-      }, 300), // Adjust debounce time as needed
+      }, 100),
     [setSearchQuery]
   );
 
@@ -347,6 +347,7 @@ const Dashboard: React.FC = () => {
     if (!searchQuery) {
       return filteredTreeData;
     }
+    setIsSidebarOpen(true);
 
     const searchLower = searchQuery.toLowerCase();
 
@@ -415,7 +416,9 @@ const Dashboard: React.FC = () => {
         <div
           className={`w-64 bg-gray-900 overflow-auto custom-scrollbar ${
             isSidebarOpen
-              ? "fixed inset-y-0 left-0 z-50 mt-16 sm:mt-0 sm:relative sm:z-0"
+              ? searchQuery
+                ? "fixed inset-y-0 left-0 z-50 mt-36 sm:mt-0 sm:relative sm:z-0"
+                : "fixed inset-y-0 left-0 z-50 mt-20 sm:mt-0 sm:relative sm:z-0"
               : "hidden"
           } sm:block`}
         >
