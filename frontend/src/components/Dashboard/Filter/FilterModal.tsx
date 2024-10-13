@@ -12,23 +12,15 @@ interface FilterModalProps {
   isDashboard?: boolean;
 }
 
-const FilterModal: React.FC<FilterModalProps> = ({ onClose, isDashboard }) => {
+const FilterModal: React.FC<FilterModalProps> = ({ onClose }) => {
   const searchFilterContext = useContext(SearchFilterContext);
 
   if (!searchFilterContext) {
     throw new Error("FilterModal must be used within a SearchFilterProvider");
   }
 
-  const {
-    appliedFilters,
-    setAppliedFilters,
-    categories,
-    setCategories,
-    brands,
-    setBrands,
-    statuses,
-    setStatuses,
-  } = searchFilterContext;
+  const { appliedFilters, setAppliedFilters, statuses, setStatuses } =
+    searchFilterContext;
 
   // Temporary filter states initialized with current applied filters
   const [tempCategory, setTempCategory] = useState<string>(

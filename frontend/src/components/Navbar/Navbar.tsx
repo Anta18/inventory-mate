@@ -1,7 +1,7 @@
 // src/components/Navbar/Navbar.tsx
 
 import React, { useContext, useState } from "react";
-import { Filter, X, LogOut, BarChart, Home, Menu } from "lucide-react";
+import { Filter, LogOut, BarChart, Home, Menu } from "lucide-react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 import SearchInput from "../Dashboard/Filter/SearchInput";
