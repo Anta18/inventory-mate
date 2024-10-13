@@ -30,3 +30,16 @@ export interface Location {
   subGodowns?: Location[];
   items?: Item[];
 }
+
+export interface Statistics {
+  totalItems: number;
+  totalLocations: number;
+  totalGodowns:number;
+  totalSubGodowns: number;
+  inStock: number;
+  outOfStock: number;
+  totalInventoryValue: number;
+  itemsPerCategory: Record<string, number>;
+  itemsPerBrand: Record<string, number>;
+  lowStockItems: ItemDetails[];
+}

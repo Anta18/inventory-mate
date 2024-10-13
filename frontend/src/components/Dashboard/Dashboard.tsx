@@ -1,13 +1,19 @@
 // src/components/Dashboard/Dashboard.tsx
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import Navbar from "../Navbar";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useContext,
+} from "react";
 import Tree from "../Sidebar/Tree";
 import ItemDetails from "./ItemDetails";
 import axiosInstance from "../../api/axiosInstance";
 import { TreeItem, Location } from "../../types";
 import debounce from "lodash.debounce";
 import { Menu } from "lucide-react";
+import { SearchFilterContext } from "../../context/SearchFilterContext";
 
 const Dashboard: React.FC = () => {
   // State declarations
@@ -15,62 +21,68 @@ const Dashboard: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<TreeItem | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false); // Changed default to false for small devices
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
 
-  // States for search and filters
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [filterType, setFilterType] = useState<string>("All");
-  const [statusFilter, setStatusFilter] = useState<string>("All");
-  const [brandFilter, setBrandFilter] = useState<string>("All");
-  const [minPrice, setMinPrice] = useState<number | "">("");
-  const [maxPrice, setMaxPrice] = useState<number | "">("");
-  const [minQuantity, setMinQuantity] = useState<number | "">("");
-  const [maxQuantity, setMaxQuantity] = useState<number | "">("");
-  const [categories, setCategories] = useState<string[]>(["All"]);
-  const [brands, setBrands] = useState<string[]>(["All"]);
-  const [statuses, setStatuses] = useState<string[]>(["All"]);
+  // Access search and filter states from context
+  const {
+    searchQuery,
+    setSearchQuery,
+    filterType,
+    statusFilter,
+    brandFilter,
+    minPrice,
+    maxPrice,
+    minQuantity,
+    maxQuantity,
+    setCategories,
+    setBrands,
+    setStatuses,
+  } = useContext(SearchFilterContext)!;
 
-  // Function to convert Location to TreeItem
-  const convertLocationsToTreeItems = (locations: Location[]): TreeItem[] => {
-    return locations
-      .map((loc): TreeItem | null => {
-        // Recursively convert sub-godowns
-        const subGodowns = loc.subGodowns
-          ? convertLocationsToTreeItems(loc.subGodowns)
-          : [];
+  // Memoized function to convert Location to TreeItem
+  const convertLocationsToTreeItems = useCallback(
+    (locations: Location[]): TreeItem[] => {
+      return locations
+        .map((loc): TreeItem | null => {
+          // Recursively convert sub-godowns
+          const subGodowns = loc.subGodowns
+            ? convertLocationsToTreeItems(loc.subGodowns)
+            : [];
 
-        // Map items to TreeItem objects
-        const items = loc.items
-          ? loc.items.map(
-              (item): TreeItem => ({
-                _id: item._id,
-                name: item.name,
-                type: "item",
-                itemDetails: item,
-                shouldExpand: false,
-              })
-            )
-          : [];
+          // Map items to TreeItem objects
+          const items = loc.items
+            ? loc.items.map(
+                (item): TreeItem => ({
+                  _id: item._id,
+                  name: item.name,
+                  type: "item",
+                  itemDetails: item,
+                  shouldExpand: false,
+                })
+              )
+            : [];
 
-        // Combine sub-godowns and items
-        const children = [...subGodowns, ...items];
+          // Combine sub-godowns and items
+          const children = [...subGodowns, ...items];
 
-        // If no children, exclude this godown
-        if (children.length === 0) {
-          return null;
-        }
+          // If no children, exclude this godown
+          if (children.length === 0) {
+            return null;
+          }
 
-        return {
-          _id: loc._id,
-          name: loc.name,
-          type: "location",
-          shouldExpand: false,
-          isSubGodown: !(loc.subGodowns && loc.subGodowns.length > 0),
-          children: children,
-        };
-      })
-      .filter((item): item is TreeItem => item !== null);
-  };
+          return {
+            _id: loc._id,
+            name: loc.name,
+            type: "location",
+            shouldExpand: false,
+            isSubGodown: !(loc.subGodowns && loc.subGodowns.length > 0),
+            children: children,
+          };
+        })
+        .filter((item): item is TreeItem => item !== null);
+    },
+    []
+  );
 
   // Fetch all data or based on filters
   const fetchTreeData = useCallback(async () => {
@@ -109,7 +121,7 @@ const Dashboard: React.FC = () => {
         params.maxQuantity = String(maxQuantity);
       }
 
-      const response = await axiosInstance.get("godown/search/filtered", {
+      const response = await axiosInstance.get("godown/filtered", {
         params,
       });
       const locations: Location[] = response.data;
@@ -118,6 +130,7 @@ const Dashboard: React.FC = () => {
       setFilteredTreeData(treeItems);
 
       // Update categories, brands, and statuses based on fetched data
+      // Collect unique categories, brands, and statuses
       const categorySet = new Set<string>();
       const brandSet = new Set<string>();
       const statusSet = new Set<string>();
@@ -143,6 +156,7 @@ const Dashboard: React.FC = () => {
 
       collectFilters(treeItems);
 
+      // Update categories, brands, and statuses in context
       setCategories(["All", ...Array.from(categorySet).sort()]);
       setBrands(["All", ...Array.from(brandSet).sort()]);
       setStatuses(["All", ...Array.from(statusSet).sort()]);
@@ -160,6 +174,10 @@ const Dashboard: React.FC = () => {
     maxPrice,
     minQuantity,
     maxQuantity,
+    convertLocationsToTreeItems,
+    setCategories,
+    setBrands,
+    setStatuses,
   ]);
 
   // Fetch data on component mount and when filters change
@@ -179,42 +197,7 @@ const Dashboard: React.FC = () => {
     []
   );
 
-  const handleSearchChange = (query: string) => {
-    debouncedSearch(query);
-  };
-
-  // Handlers for additional filters
-  const handleFilterTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFilterType(e.target.value);
-  };
-
-  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setStatusFilter(e.target.value);
-  };
-
-  const handleBrandChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setBrandFilter(e.target.value);
-  };
-
-  const handleMinPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setMinPrice(value === "" ? "" : parseFloat(value));
-  };
-
-  const handleMaxPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setMaxPrice(value === "" ? "" : parseFloat(value));
-  };
-
-  const handleMinQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setMinQuantity(value === "" ? "" : parseInt(value, 10));
-  };
-
-  const handleMaxQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setMaxQuantity(value === "" ? "" : parseInt(value, 10));
-  };
+  // Handlers for additional filters are managed via context setters
 
   // Cleanup debounce on unmount
   useEffect(() => {
@@ -274,7 +257,6 @@ const Dashboard: React.FC = () => {
       }
     } catch (error) {
       console.error("Error moving item:", error);
-      // Optionally, set an error state or show a notification to the user
     }
   };
 
@@ -319,7 +301,7 @@ const Dashboard: React.FC = () => {
             children: item.children
               ? [...item.children, movedItem]
               : [movedItem],
-            shouldExpand: true, // Ensure the parent is expanded to show the new child
+            shouldExpand: false,
           };
         }
 
@@ -406,31 +388,7 @@ const Dashboard: React.FC = () => {
   }, [searchQuery, filteredTreeData]);
 
   return (
-    <div className="flex flex-col h-screen bg-black">
-      {/* Navbar */}
-      <Navbar
-        searchQuery={searchQuery}
-        onSearchChange={handleSearchChange}
-        filterType={filterType}
-        onFilterTypeChange={handleFilterTypeChange}
-        statusFilter={statusFilter}
-        onStatusChange={handleStatusChange}
-        brandFilter={brandFilter}
-        onBrandChange={handleBrandChange}
-        minPrice={minPrice}
-        onMinPriceChange={handleMinPriceChange}
-        maxPrice={maxPrice}
-        onMaxPriceChange={handleMaxPriceChange}
-        minQuantity={minQuantity}
-        onMinQuantityChange={handleMinQuantityChange}
-        maxQuantity={maxQuantity}
-        onMaxQuantityChange={handleMaxQuantityChange}
-        categories={categories}
-        brands={brands}
-        statuses={statuses}
-        setIsSidebarOpen={setIsSidebarOpen}
-      />
-
+    <div className="flex flex-col h-full bg-black">
       {/* Hamburger menu for small devices */}
       <div className="sm:hidden bg-gray-800 p-2 m-2 w-10 h-10">
         <button
@@ -444,7 +402,7 @@ const Dashboard: React.FC = () => {
       <div className="flex flex-1 overflow-hidden bg-gray-900">
         {/* Sidebar */}
         <div
-          className={`w-64 bg-gray-900 border-r overflow-auto custom-scrollbar ${
+          className={`w-64 bg-gray-900 overflow-auto custom-scrollbar ${
             isSidebarOpen
               ? "fixed inset-y-0 left-0 z-50 mt-16 sm:mt-0 sm:relative sm:z-0"
               : "hidden"

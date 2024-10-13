@@ -1,6 +1,8 @@
+// src/components/Login.tsx
+
 import axios from "axios";
 import React, { useContext, useEffect, useState } from "react";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { Link as RouterLink, useNavigate, useLocation } from "react-router-dom"; // Import useLocation
 import { motion } from "framer-motion";
 import { AuthContext } from "../context/AuthContext";
 
@@ -12,6 +14,8 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromLogout = location.state?.fromLogout;
 
   const { login } = useContext(AuthContext);
 
@@ -34,7 +38,7 @@ const Login: React.FC = () => {
       console.log("Login successful:", response.data);
       login(response.data.token);
       navigate("/dashboard");
-    } catch (error) {
+    } catch (error: any) {
       if (axios.isAxiosError(error) && error.response) {
         setError(error.response.data.error || "Login failed");
       } else {
@@ -83,6 +87,14 @@ const Login: React.FC = () => {
             <h3 className="text-2xl font-bold mb-6 text-center text-gray-100">
               User Login
             </h3>
+
+            {/* Logout Message */}
+            {fromLogout && (
+              <div className="mb-4 py-2 bg-red-500 text-white rounded-lg text-center">
+                You have successfully logged out.
+              </div>
+            )}
+
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
                 <label

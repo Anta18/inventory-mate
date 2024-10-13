@@ -6,33 +6,39 @@ import Signup from "./userAuthentication/Signup";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 import Dashboard from "./components/Dashboard/Dashboard";
+import StatisticsPage from "./components/Statistics/StatisticsPage";
+import Layout from "./components/Layout/Layout";
+import { SearchFilterProvider } from "./context/SearchFilterContext";
 
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <div className="w-full h-full bg-[#EBEBEB]">
+      <SearchFilterProvider>
+        <BrowserRouter>
           <Routes>
-            {/* Protected Dashboard Route */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-
             {/* Public Routes */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
 
-            {/* Catch-All Route */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            {/* Protected Routes with Layout */}
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="statistics" element={<StatisticsPage />} />
+              {/* Redirect root to dashboard */}
+              <Route index element={<Navigate to="dashboard" replace />} />
+              {/* Catch-All Route */}
+              <Route path="*" element={<Navigate to="dashboard" replace />} />
+            </Route>
           </Routes>
-        </div>
-      </BrowserRouter>
+        </BrowserRouter>
+      </SearchFilterProvider>
     </AuthProvider>
   );
 }

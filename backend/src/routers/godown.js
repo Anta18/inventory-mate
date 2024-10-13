@@ -1,241 +1,389 @@
 // routes/godowns.js
+
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
 const Godown = require("../models/godown");
-const auth = require("../middleware/auth");
 const Item = require("../models/items");
+const auth = require("../middleware/auth");
+const { body, validationResult } = require("express-validator");
 
-// Create a new Godown
-router.post("/", auth, async (req, res) => {
+// Create a new Godown with validation
+router.post(
+  "/",
+  auth,
+  [
+    body("name").isString().trim().notEmpty().withMessage("Name is required."),
+    body("parent_godown")
+      .optional()
+      .isMongoId()
+      .withMessage("parent_godown must be a valid Godown ID."),
+  ],
+  async (req, res) => {
+    // Handle validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+      const { _id, name, parent_godown } = req.body;
+
+      // If user provides a custom _id, validate its uniqueness and format
+      if (_id) {
+        // Ensure _id is a valid ObjectId
+        if (!mongoose.Types.ObjectId.isValid(_id)) {
+          return res.status(400).send({ error: "Invalid Godown ID format." });
+        }
+
+        // Check if _id already exists
+        const existingGodown = await Godown.findById(_id);
+        if (existingGodown) {
+          return res.status(400).send({ error: "Godown ID already exists." });
+        }
+      }
+
+      // Validate parent_godown if provided
+      if (parent_godown) {
+        const parentGodown = await Godown.findOne({
+          _id: parent_godown,
+          owner: req.user._id,
+        });
+        if (!parentGodown) {
+          return res.status(400).send({ error: "Invalid parent_godown ID." });
+        }
+
+        // Prevent setting parent_godown to itself if _id is provided
+        if (_id && String(parent_godown) === String(_id)) {
+          return res
+            .status(400)
+            .send({ error: "Godown cannot be its own parent." });
+        }
+      }
+
+      // Create new Godown
+      const godown = new Godown({
+        _id: _id || undefined, // Assign _id if provided, else let MongoDB generate it
+        name,
+        parent_godown: parent_godown || null,
+        owner: req.user._id,
+      });
+
+      await godown.save();
+      res.status(201).send(godown);
+    } catch (error) {
+      console.error("Error creating godown:", error);
+      res.status(400).send({ error: error.message });
+    }
+  }
+);
+
+router.get("/filtered", auth, async (req, res) => {
   try {
-    const { _id, name, parent_godown } = req.body;
+    const {
+      godown,
+      subgodown,
+      status,
+      category,
+      brand,
+      minPrice,
+      maxPrice,
+      minQuantity,
+      maxQuantity,
+      search,
+    } = req.query;
 
-    // If user provides a custom _id, validate its uniqueness and format
-    if (_id) {
-      // Ensure _id is a valid ObjectId
-      if (!mongoose.Types.ObjectId.isValid(_id)) {
+    // Initialize item filter excluding 'godown_id'
+    let itemFilter = {};
+
+    // Apply status filter
+    if (status) {
+      const statusArray = Array.isArray(status) ? status : status.split(",");
+      itemFilter.status = { $in: statusArray };
+    }
+
+    // Apply category filter
+    if (category) {
+      const categoryArray = Array.isArray(category)
+        ? category
+        : category.split(",");
+      itemFilter.category = { $in: categoryArray };
+    }
+
+    // Apply brand filter
+    if (brand) {
+      const brandArray = Array.isArray(brand) ? brand : brand.split(",");
+      itemFilter.brand = { $in: brandArray };
+    }
+
+    // Apply price range filter
+    if (minPrice || maxPrice) {
+      itemFilter.price = {};
+      if (minPrice) itemFilter.price.$gte = parseFloat(minPrice);
+      if (maxPrice) itemFilter.price.$lte = parseFloat(maxPrice);
+    }
+
+    // Apply quantity range filter
+    if (minQuantity || maxQuantity) {
+      itemFilter.quantity = {};
+      if (minQuantity) itemFilter.quantity.$gte = parseInt(minQuantity, 10);
+      if (maxQuantity) itemFilter.quantity.$lte = parseInt(maxQuantity, 10);
+    }
+
+    // Apply search filter on item name
+    if (search) {
+      itemFilter.name = { $regex: search, $options: "i" };
+    }
+
+    // Initialize godownIds array and specificGodownId
+    let godownIds = [];
+    let specificGodownId = null;
+
+    // Handle godown filter
+    if (godown) {
+      if (!mongoose.Types.ObjectId.isValid(godown)) {
         return res.status(400).send({ error: "Invalid Godown ID format." });
       }
 
-      // Check if _id already exists
-      const existingGodown = await Godown.findById(_id);
-      if (existingGodown) {
-        return res.status(400).send({ error: "Godown ID already exists." });
-      }
-    }
-
-    // Validate parent_godown if provided
-    if (parent_godown) {
-      if (!mongoose.Types.ObjectId.isValid(parent_godown)) {
-        return res
-          .status(400)
-          .send({ error: "Invalid parent_godown ID format." });
-      }
-
-      const parentGodown = await Godown.findOne({
-        _id: parent_godown,
+      const selectedGodown = await Godown.findOne({
+        _id: godown,
         owner: req.user._id,
       });
-      if (!parentGodown) {
-        return res.status(400).send({ error: "Invalid parent_godown ID." });
-      }
 
-      // Prevent setting parent_godown to itself if _id is provided
-      if (_id && String(parent_godown) === String(_id)) {
+      if (!selectedGodown) {
         return res
           .status(400)
-          .send({ error: "Godown cannot be its own parent." });
+          .send({ error: "Godown not found or access denied." });
+      }
+
+      godownIds.push(selectedGodown._id);
+      specificGodownId = selectedGodown._id; // Mark the selected godown for item filtering
+    }
+
+    // Handle subgodown filter
+    if (subgodown) {
+      if (!mongoose.Types.ObjectId.isValid(subgodown)) {
+        return res.status(400).send({ error: "Invalid SubGodown ID format." });
+      }
+
+      const selectedSubGodown = await Godown.findOne({
+        _id: subgodown,
+        owner: req.user._id,
+      });
+
+      if (!selectedSubGodown) {
+        return res
+          .status(400)
+          .send({ error: "SubGodown not found or access denied." });
+      }
+
+      godownIds.push(selectedSubGodown._id);
+      specificGodownId = selectedSubGodown._id; // Set subgodown as the specific godown
+    }
+
+    // Fetch items based on godown and subgodown filtering
+    async function getItemsForGodown(godownId) {
+      const finalItemFilter = { ...itemFilter, godown_id: godownId };
+      const items = await Item.find(finalItemFilter)
+        .select(
+          "_id name quantity category brand price status image_url attributes"
+        )
+        .lean();
+      return items;
+    }
+
+    if (specificGodownId) {
+      // If a specific godown or subgodown is mentioned, fetch items only for that godown
+      const items = await getItemsForGodown(specificGodownId);
+
+      if (godown) {
+        // If godown is mentioned, also fetch its subgodowns
+        const subGodowns = await Godown.find({
+          parent_godown: specificGodownId,
+        }).lean();
+
+        const subGodownsData = await Promise.all(
+          subGodowns.map(async (subGodown) => ({
+            _id: subGodown._id,
+            name: subGodown.name,
+            items: await getItemsForGodown(subGodown._id),
+            subGodowns: [], // Since subgodowns don’t have further subgodowns
+          }))
+        );
+
+        return res.json([
+          {
+            _id: specificGodownId,
+            name: (await Godown.findById(specificGodownId)).name,
+            items,
+            subGodowns: subGodownsData,
+          },
+        ]);
+      } else {
+        // If subgodown is mentioned, return only the subgodown and its items
+        return res.json([
+          {
+            _id: specificGodownId,
+            name: (await Godown.findById(specificGodownId)).name,
+            items,
+            subGodowns: [],
+          },
+        ]);
       }
     }
 
-    // Create new Godown
-    const godown = new Godown({
-      _id: _id || undefined, // Assign _id if provided, else let MongoDB generate it
-      name,
-      parent_godown: parent_godown || null,
-      owner: req.user._id,
-    });
-
-    await godown.save();
-    res.status(201).send(godown);
-  } catch (error) {
-    console.error("Error creating godown:", error);
-    res.status(400).send({ error: error.message });
-  }
-});
-
-// Get all Godowns for the authenticated user
-// router.get("/", auth, async (req, res) => {
-//   try {
-//     const topLevelGodowns = await Godown.aggregate([
-//       {
-//         $match: {
-//           owner: new mongoose.Types.ObjectId(req.user._id),
-//           parent_godown: null,
-//         },
-//       },
-//       {
-//         $graphLookup: {
-//           from: "godowns",
-//           startWith: "$_id",
-//           connectFromField: "_id",
-//           connectToField: "parent_godown",
-//           as: "allSubGodowns",
-//           depthField: "depth",
-//         },
-//       },
-//       {
-//         $lookup: {
-//           from: "items",
-//           localField: "_id",
-//           foreignField: "godown_id",
-//           as: "items",
-//         },
-//       },
-//       {
-//         $lookup: {
-//           from: "items",
-//           let: { godownIds: "$allSubGodowns._id" },
-//           pipeline: [
-//             {
-//               $match: {
-//                 $expr: { $in: ["$godown_id", "$$godownIds"] },
-//               },
-//             },
-//           ],
-//           as: "allItems",
-//         },
-//       },
-//       {
-//         $addFields: {
-//           subGodowns: {
-//             $map: {
-//               input: "$allSubGodowns",
-//               as: "subGodown",
-//               in: {
-//                 _id: "$$subGodown._id",
-//                 name: "$$subGodown.name",
-//                 parent_godown: "$$subGodown.parent_godown",
-//               },
-//             },
-//           },
-//         },
-//       },
-//       {
-//         $project: {
-//           allSubGodowns: 0,
-//           allItems: 0,
-//           parent_godown: 0,
-//           owner: 0,
-//           __v: 0,
-//         },
-//       },
-//     ]);
-
-//     // Function to build the hierarchical structure
-//     const buildHierarchy = (godowns) => {
-//       const godownMap = {};
-//       godowns.forEach((godown) => {
-//         godown.subGodowns = [];
-//         godown.items = godown.items || [];
-//         godownMap[godown._id.toString()] = godown;
-//       });
-
-//       topLevelGodowns.forEach((godown) => {
-//         if (godown.parent_godown) {
-//           const parent = godownMap[godown.parent_godown.toString()];
-//           if (parent) {
-//             parent.subGodowns.push(godown);
-//           }
-//         }
-//       });
-
-//       return topLevelGodowns;
-//     };
-
-//     const hierarchicalGodowns = buildHierarchy(topLevelGodowns);
-//     res.send(hierarchicalGodowns);
-//   } catch (error) {
-//     console.error("Error fetching godowns:", error);
-//     res.status(500).send({ error: error.message });
-//   }
-// });
-
-router.get("/", auth, async (req, res) => {
-  try {
-    // Find all top-level godowns belonging to the logged-in user
+    // If no godown or subgodown is specified, return all top-level godowns
     const topLevelGodowns = await Godown.find({
       owner: req.user._id,
       parent_godown: null,
-    });
+    }).lean();
 
-    // Function to recursively fetch subgodowns and items
-    async function getGodownStructure(godown) {
-      const subGodowns = await Godown.find({ parent_godown: godown._id });
-      const subGodownsData = await Promise.all(
-        subGodowns.map(async (subGodown) => {
-          const items = await Item.find({ godown_id: subGodown._id }).select(
-            "_id name description category quantity brand price status image_url attributes"
-          );
-
-          return {
-            _id: subGodown._id,
-            name: subGodown.name,
-            subGodowns: await getGodownStructure(subGodown),
-            items: items,
-          };
-        })
-      );
-
-      return subGodownsData;
-    }
-
-    // Construct the final response
-    const godownsWithSubgodowns = await Promise.all(
+    const godownsWithFilteredItems = await Promise.all(
       topLevelGodowns.map(async (godown) => ({
         _id: godown._id,
         name: godown.name,
-        subGodowns: await getGodownStructure(godown),
+        subGodowns: await Promise.all(
+          (
+            await Godown.find({ parent_godown: godown._id }).lean()
+          ).map(async (subGodown) => ({
+            _id: subGodown._id,
+            name: subGodown.name,
+            items: await getItemsForGodown(subGodown._id),
+            subGodowns: [], // No subgodowns for these subGodowns
+          }))
+        ),
       }))
     );
 
-    res.json(godownsWithSubgodowns);
+    res.json(godownsWithFilteredItems);
   } catch (error) {
-    console.error("Error fetching godowns:", error);
-    res
-      .status(500)
-      .json({ message: "Error fetching godowns", error: error.message });
+    console.error("Error fetching filtered godowns:", error);
+    res.status(500).json({
+      message: "Error fetching filtered godowns",
+      error: error.message,
+    });
   }
 });
 
-// router.get("/", auth, async (req, res) => {
-//   try {
-//     const topLevelGodowns = await Godown.find({
-//       owner: req.user._id,
-//       parent_godown: null,
-//     })
-//       .populate({
-//         path: "subGodowns",
-//         populate: {
-//           path: "subGodowns",
-//           populate: {
-//             path: "items",
-//           },
-//         },
-//       })
-//       .populate("items")
-//       .exec();
+// Delete a Godown with cascade
+router.delete("/:id", auth, async (req, res) => {
+  try {
+    const godownId = req.params.id;
 
-//     res.send(topLevelGodowns);
-//   } catch (error) {
-//     console.error("Error fetching godowns:", error);
-//     res.status(500).send({ error: error.message });
-//   }
-// });
+    // Validate godownId
+    if (!mongoose.Types.ObjectId.isValid(godownId)) {
+      return res.status(400).send({ error: "Invalid Godown ID format." });
+    }
+
+    const godown = await Godown.findOne({
+      _id: godownId,
+      owner: req.user._id,
+    });
+
+    if (!godown) {
+      return res.status(404).send({ error: "Godown not found." });
+    }
+
+    await godown.remove(); // Triggers pre 'remove' middleware for cascading deletes
+
+    res.send({ message: "Godown deleted successfully.", godown });
+  } catch (error) {
+    console.error("Error deleting godown:", error);
+    res.status(500).send({ error: error.message });
+  }
+});
+
+router.get("/options", auth, async (req, res) => {
+  try {
+    const { godown, subgodown, brand, category } = req.query;
+
+    // Initialize query filters with owner
+    let itemQuery = {};
+
+    if (subgodown) {
+      // Validate subgodown ID
+      if (!mongoose.Types.ObjectId.isValid(subgodown)) {
+        console.log("Invalid SubGodown ID:", subgodown);
+        return res.status(400).send({ error: "Invalid SubGodown ID format." });
+      }
+
+      // Convert subgodown to ObjectId
+      const subgodownId = new mongoose.Types.ObjectId(subgodown);
+
+      // Verify subgodown ownership
+      const selectedSubGodown = await Godown.findOne({
+        _id: subgodownId,
+        owner: req.user._id,
+      });
+
+      if (!selectedSubGodown) {
+        console.log("SubGodown not found or access denied:", subgodown);
+        return res
+          .status(404)
+          .send({ error: "SubGodown not found or access denied." });
+      }
+
+      // Assign godown_id to subgodown as ObjectId
+      itemQuery.godown_id = subgodownId;
+    } else if (godown) {
+      // Validate godown ID
+      if (!mongoose.Types.ObjectId.isValid(godown)) {
+        console.log("Invalid Godown ID:", godown);
+        return res.status(400).send({ error: "Invalid Godown ID format." });
+      }
+
+      // Convert godown to ObjectId
+      const godownId = new mongoose.Types.ObjectId(godown);
+
+      // Verify godown ownership
+      const selectedGodown = await Godown.findOne({
+        _id: godownId,
+        owner: req.user._id,
+      });
+
+      if (!selectedGodown) {
+        console.log("Godown not found or access denied:", godown);
+        return res
+          .status(404)
+          .send({ error: "Godown not found or access denied." });
+      }
+
+      // Fetch subgodowns under the selected godown
+      const subgodowns = await Godown.find({ parent_godown: godownId }).select(
+        "_id"
+      );
+      const godownIds = [godownId, ...subgodowns.map((g) => g._id)];
+
+      // Assign godown_id with $in operator as ObjectIds
+      itemQuery.godown_id = { $in: godownIds };
+    }
+
+    // Apply additional filters if present
+    if (brand) {
+      itemQuery.brand = brand;
+    }
+    if (category) {
+      itemQuery.category = category;
+    }
+
+    // Fetch distinct brands and categories based on the itemQuery
+    const [availableBrands, availableCategories] = await Promise.all([
+      Item.distinct("brand", itemQuery),
+      Item.distinct("category", itemQuery),
+    ]);
+
+    res.json({
+      brands: availableBrands,
+      categories: availableCategories,
+    });
+  } catch (error) {
+    console.error("Error in /options endpoint:", error);
+    res.status(500).json({ error: "Failed to fetch filter options." });
+  }
+});
 
 // Get a single Godown by ID
-router.get("/:id", auth, async (req, res) => {
+router.get("search/:id", auth, async (req, res) => {
   try {
     const godownId = req.params.id;
 
@@ -361,101 +509,41 @@ router.delete("/:id", auth, async (req, res) => {
   }
 });
 
-router.get("/search/filtered", auth, async (req, res) => {
+router.get("/list", auth, async (req, res) => {
   try {
-    // Extract query parameters
-    const {
-      status,
-      category,
-      brand,
-      minPrice,
-      maxPrice,
-      minQuantity,
-      maxQuantity,
-      search,
-    } = req.query;
+    const { parent_godown } = req.query;
+    const filter = { owner: req.user._id };
 
-    // Build the item filter object based on query parameters
-    let itemFilter = {};
+    if (parent_godown) {
+      // Validate parent_godown ID
+      if (!mongoose.Types.ObjectId.isValid(parent_godown)) {
+        return res.status(400).json({ error: "Invalid Parent Godown ID." });
+      }
 
-    if (status) {
-      itemFilter.status = { $in: status };
+      // Ensure the parent_godown belongs to the user
+      const parentGodown = await Godown.findOne({
+        _id: parent_godown,
+        owner: req.user._id,
+      });
+
+      if (!parentGodown) {
+        return res
+          .status(404)
+          .json({ error: "Parent Godown not found or access denied." });
+      }
+
+      // Filter subgodowns with the specified parent_godown
+      filter.parent_godown = parent_godown;
+    } else {
+      // For top-level godowns, parent_godown is null
+      filter.parent_godown = null;
     }
 
-    if (category) {
-      const categoryArray = category.split(",").map((c) => c.trim());
-      itemFilter.category = { $in: categoryArray };
-    }
-
-    if (brand) {
-      const brandArray = brand.split(",").map((b) => b.trim());
-      itemFilter.brand = { $in: brandArray };
-    }
-
-    if (minPrice || maxPrice) {
-      itemFilter.price = {};
-      if (minPrice) itemFilter.price.$gte = parseFloat(minPrice);
-      if (maxPrice) itemFilter.price.$lte = parseFloat(maxPrice);
-    }
-
-    if (minQuantity || maxQuantity) {
-      itemFilter.quantity = {};
-      if (minQuantity) itemFilter.quantity.$gte = parseInt(minQuantity, 10);
-      if (maxQuantity) itemFilter.quantity.$lte = parseInt(maxQuantity, 10);
-    }
-
-    if (search) {
-      // Case-insensitive search on the item name
-      itemFilter.name = { $regex: search, $options: "i" };
-    }
-
-    // Find all top-level godowns belonging to the logged-in user
-    const topLevelGodowns = await Godown.find({
-      owner: req.user._id,
-      parent_godown: null,
-    });
-
-    // Function to recursively fetch subgodowns and filtered items
-    async function getGodownStructure(godown) {
-      const subGodowns = await Godown.find({ parent_godown: godown._id });
-      const subGodownsData = await Promise.all(
-        subGodowns.map(async (subGodown) => {
-          // Apply the itemFilter and ensure items belong to the current subGodown
-          const items = await Item.find({
-            godown_id: subGodown._id,
-            ...itemFilter,
-          }).select(
-            "_id name quantity category brand price status image_url attributes"
-          );
-
-          return {
-            _id: subGodown._id,
-            name: subGodown.name,
-            subGodowns: await getGodownStructure(subGodown),
-            items: items,
-          };
-        })
-      );
-
-      return subGodownsData;
-    }
-
-    // Construct the final response with filtered items
-    const godownsWithFilteredItems = await Promise.all(
-      topLevelGodowns.map(async (godown) => ({
-        _id: godown._id,
-        name: godown.name,
-        subGodowns: await getGodownStructure(godown),
-      }))
-    );
-
-    res.json(godownsWithFilteredItems);
+    const godowns = await Godown.find(filter).select("_id name parent_godown");
+    res.json(godowns);
   } catch (error) {
-    console.error("Error fetching filtered godowns:", error);
-    res.status(500).json({
-      message: "Error fetching filtered godowns",
-      error: error.message,
-    });
+    console.error("Error fetching godowns:", error);
+    res.status(500).json({ error: "Failed to fetch godowns." });
   }
 });
 

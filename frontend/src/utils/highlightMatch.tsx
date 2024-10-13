@@ -1,12 +1,5 @@
 // src/utils/highlightMatch.ts
 
-/**
- * Highlights the matched portions of the text based on the search query.
- *
- * @param text - The original text of the node.
- * @param query - The search query to match against.
- * @returns A React fragment with matched portions highlighted or the original text.
- */
 export const highlightMatch = (
   text: string,
   query: string
