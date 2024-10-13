@@ -63,7 +63,7 @@ router.post(
 
       // Create new Godown
       const godown = new Godown({
-        _id: _id || undefined, // Assign _id if provided, else let MongoDB generate it
+        _id: _id || undefined,
         name,
         parent_godown: parent_godown || null,
         owner: req.user._id,

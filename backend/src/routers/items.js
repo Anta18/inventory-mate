@@ -103,7 +103,6 @@ router.post(
       .trim()
       .notEmpty()
       .withMessage("Brand is required."),
-    // Add more validators as needed
   ],
   async (req, res) => {
     // Handle validation errors
@@ -164,8 +163,8 @@ router.get("/", auth, async (req, res) => {
       minPrice,
       maxPrice,
       brand,
-      attributes, // Assuming attributes can be filtered
-      sortBy, // e.g., sortBy=price:asc or sortBy=name:desc
+      attributes,
+      sortBy, //sortBy=price:asc or sortBy=name:desc
       limit = 20,
       skip = 0,
       godown_id,
