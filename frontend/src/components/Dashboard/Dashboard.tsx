@@ -14,6 +14,7 @@ import { TreeItem, Location } from "../../types";
 import debounce from "lodash.debounce";
 import { Menu } from "lucide-react";
 import { SearchFilterContext } from "../../context/SearchFilterContext";
+import FilterModal from "./Filter/FilterModal";
 
 const Dashboard: React.FC = () => {
   // State declarations
@@ -22,22 +23,38 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState<boolean>(false); // State to control Filter Modal
 
   // Access search and filter states from context
+  const searchFilterContext = useContext(SearchFilterContext);
+
+  if (!searchFilterContext) {
+    throw new Error("Dashboard must be used within a SearchFilterProvider");
+  }
+
   const {
     searchQuery,
     setSearchQuery,
-    filterType,
-    statusFilter,
-    brandFilter,
+    appliedFilters,
+    setAppliedFilters,
+    categories,
+    brands,
+    statuses,
+    setCategories,
+    setBrands,
+    setStatuses,
+  } = searchFilterContext;
+
+  // Destructure appliedFilters for easier access
+  const {
+    category,
+    status,
+    brand,
     minPrice,
     maxPrice,
     minQuantity,
     maxQuantity,
-    setCategories,
-    setBrands,
-    setStatuses,
-  } = useContext(SearchFilterContext)!;
+  } = appliedFilters;
 
   // Memoized function to convert Location to TreeItem
   const convertLocationsToTreeItems = useCallback(
@@ -84,7 +101,7 @@ const Dashboard: React.FC = () => {
     []
   );
 
-  // Fetch all data or based on filters
+  // Fetch all data or based on appliedFilters
   const fetchTreeData = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -93,31 +110,31 @@ const Dashboard: React.FC = () => {
       // Build query parameters for filtering
       const params: Record<string, string> = {};
 
-      if (filterType && filterType !== "All") {
-        params.category = filterType;
+      if (category && category !== "All") {
+        params.category = category;
       }
 
-      if (statusFilter && statusFilter !== "All") {
-        params.status = statusFilter;
+      if (status && status !== "All") {
+        params.status = status;
       }
 
-      if (brandFilter && brandFilter !== "All") {
-        params.brand = brandFilter;
+      if (brand && brand !== "All") {
+        params.brand = brand;
       }
 
-      if (minPrice !== "") {
+      if (minPrice !== undefined) {
         params.minPrice = String(minPrice);
       }
 
-      if (maxPrice !== "") {
+      if (maxPrice !== undefined) {
         params.maxPrice = String(maxPrice);
       }
 
-      if (minQuantity !== "") {
+      if (minQuantity !== undefined) {
         params.minQuantity = String(minQuantity);
       }
 
-      if (maxQuantity !== "") {
+      if (maxQuantity !== undefined) {
         params.maxQuantity = String(maxQuantity);
       }
 
@@ -167,9 +184,9 @@ const Dashboard: React.FC = () => {
       setLoading(false);
     }
   }, [
-    filterType,
-    statusFilter,
-    brandFilter,
+    category,
+    status,
+    brand,
     minPrice,
     maxPrice,
     minQuantity,
@@ -193,11 +210,9 @@ const Dashboard: React.FC = () => {
         if (query) {
           setIsSidebarOpen(true);
         }
-      }, 100),
-    []
+      }, 300), // Adjust debounce time as needed
+    [setSearchQuery]
   );
-
-  // Handlers for additional filters are managed via context setters
 
   // Cleanup debounce on unmount
   useEffect(() => {
@@ -433,6 +448,11 @@ const Dashboard: React.FC = () => {
           className="fixed inset-0 bg-black bg-opacity-50 z-40 sm:hidden"
           onClick={() => setIsSidebarOpen(false)}
         ></div>
+      )}
+
+      {/* Filter Modal */}
+      {isFilterModalOpen && (
+        <FilterModal onClose={() => setIsFilterModalOpen(false)} isDashboard />
       )}
     </div>
   );

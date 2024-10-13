@@ -39,7 +39,6 @@ const Signup: React.FC = () => {
         password,
       });
 
-      console.log("Signup successful:", response.data);
       login(response.data.token);
       navigate("/dashboard");
     } catch (error) {

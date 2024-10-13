@@ -1,11 +1,11 @@
-// src/components/Navbar/RangeInput.tsx
+// src/components/RangeInput.tsx
 
 import React from "react";
 
 interface RangeInputProps {
   label: string;
-  min: number | "";
-  max: number | "";
+  min: string;
+  max: string;
   onMinChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onMaxChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   placeholderMin: string;

@@ -35,7 +35,6 @@ const Login: React.FC = () => {
         password,
       });
 
-      console.log("Login successful:", response.data);
       login(response.data.token);
       navigate("/dashboard");
     } catch (error: any) {

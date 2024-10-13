@@ -1,17 +1,16 @@
 // src/components/Navbar/Navbar.tsx
 
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import { Filter, X, LogOut, BarChart, Home, Menu } from "lucide-react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
-import FilterDropdown from "./FilterDropdown";
-import RangeInput from "./RangeInput";
-import SearchInput from "./SearchInput";
+import SearchInput from "../Dashboard/Filter/SearchInput";
 import { SearchFilterContext } from "../../context/SearchFilterContext";
+import FilterModal from "../Dashboard/Filter/FilterModal";
 
 const Navbar: React.FC = () => {
-  const [isFilterModalOpen, setIsFilterModalOpen] = React.useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { logout } = useContext(AuthContext);
   const location = useLocation();
@@ -20,23 +19,23 @@ const Navbar: React.FC = () => {
   const {
     searchQuery,
     setSearchQuery,
-    filterType,
-    setFilterType,
-    statusFilter,
-    setStatusFilter,
-    brandFilter,
-    setBrandFilter,
-    minPrice,
-    setMinPrice,
-    maxPrice,
-    setMaxPrice,
-    minQuantity,
-    setMinQuantity,
-    maxQuantity,
-    setMaxQuantity,
-    categories,
-    brands,
-    statuses,
+    // filterType,
+    // setFilterType,
+    // statusFilter,
+    // setStatusFilter,
+    // brandFilter,
+    // setBrandFilter,
+    // minPrice,
+    // setMinPrice,
+    // maxPrice,
+    // setMaxPrice,
+    // minQuantity,
+    // setMinQuantity,
+    // maxQuantity,
+    // setMaxQuantity,
+    // categories,
+    // brands,
+    // statuses,
   } = useContext(SearchFilterContext)!;
 
   // Determine current route
@@ -164,91 +163,7 @@ const Navbar: React.FC = () => {
 
       {/* Filter Modal */}
       {isFilterModalOpen && isDashboard && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
-          onClick={() => setIsFilterModalOpen(false)}
-        >
-          <div
-            className="bg-gray-900 text-white rounded-lg w-11/12 max-w-lg p-6 relative"
-            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside the modal
-          >
-            {/* Close Button */}
-            <button
-              onClick={() => setIsFilterModalOpen(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white focus:outline-none"
-            >
-              <X className="h-6 w-6" />
-            </button>
-
-            <h2 className="text-2xl font-bold mb-4">Filter Items</h2>
-
-            {/* Filter Controls */}
-            <div className="space-y-4">
-              <FilterDropdown
-                label="Category"
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                options={categories}
-              />
-              <FilterDropdown
-                label="Status"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                options={statuses}
-              />
-              <FilterDropdown
-                label="Brand"
-                value={brandFilter}
-                onChange={(e) => setBrandFilter(e.target.value)}
-                options={brands}
-              />
-              <RangeInput
-                label="Price"
-                min={minPrice}
-                max={maxPrice}
-                onMinChange={(e) =>
-                  setMinPrice(
-                    e.target.value === "" ? "" : parseFloat(e.target.value)
-                  )
-                }
-                onMaxChange={(e) =>
-                  setMaxPrice(
-                    e.target.value === "" ? "" : parseFloat(e.target.value)
-                  )
-                }
-                placeholderMin="Min"
-                placeholderMax="Max"
-              />
-              <RangeInput
-                label="Quantity"
-                min={minQuantity}
-                max={maxQuantity}
-                onMinChange={(e) =>
-                  setMinQuantity(
-                    e.target.value === "" ? "" : parseInt(e.target.value, 10)
-                  )
-                }
-                onMaxChange={(e) =>
-                  setMaxQuantity(
-                    e.target.value === "" ? "" : parseInt(e.target.value, 10)
-                  )
-                }
-                placeholderMin="Min"
-                placeholderMax="Max"
-              />
-            </div>
-
-            {/* Apply Filters Button */}
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={() => setIsFilterModalOpen(false)}
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none"
-              >
-                Apply Filters
-              </button>
-            </div>
-          </div>
-        </div>
+        <FilterModal onClose={() => setIsFilterModalOpen(false)} isDashboard />
       )}
     </nav>
   );
