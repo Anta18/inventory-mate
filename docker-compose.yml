@@ -5,8 +5,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        VITE_BACKEND_URL: ${FRONTEND_VITE_BACKEND_URL}
     ports:
       - "80:80" 
     depends_on:
