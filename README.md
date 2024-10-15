@@ -110,6 +110,12 @@ Before you begin, ensure you have met the following requirements:
    git clone https://github.com/Anta18/inventory-mate.git
    ```
 
+2. **Navigate to Folder**
+
+   ```bash
+   cd inventory-mate
+   ```
+
 
 ## Environment Variables
 
