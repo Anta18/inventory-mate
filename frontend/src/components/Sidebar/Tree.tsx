@@ -6,7 +6,7 @@ import { X } from "lucide-react";
 import TreeNode from "./TreeNode";
 import LoadingSkeleton from "../LoadingSkeleton";
 import ErrorMessage from "../ErrorMessage";
-
+import ErrorNotification from "../ErrorNotification";
 interface TreeProps {
   data: TreeItem[];
   loading: boolean;
@@ -49,7 +49,9 @@ const Tree: React.FC<TreeProps> = ({
   if (data.length === 0) {
     return <div className="p-4 text-center text-gray-400">No items found.</div>;
   }
+
   const [draggedItem, setDraggedItem] = useState<TreeItem | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
   const handleDragStart = useCallback((item: TreeItem) => {
     setDraggedItem(item);
@@ -86,10 +88,18 @@ const Tree: React.FC<TreeProps> = ({
             newParentId = parentId;
           } else {
             console.error("Parent not found for target item");
+            // Set error message for invalid drop
+            setErrorMessage(
+              "Can't drop to a parent godown. Drop to a subgodown instead."
+            );
             return;
           }
         } else {
           console.error("Invalid drop target");
+          // Set error message for invalid drop
+          setErrorMessage(
+            "Can't drop to a parent godown. Drop to a subgodown instead."
+          );
           return;
         }
 
@@ -137,6 +147,14 @@ const Tree: React.FC<TreeProps> = ({
         isSidebarOpen ? "block" : "hidden"
       } sm:block`}
     >
+      {/* Error Notification */}
+      {errorMessage && (
+        <ErrorNotification
+          message={errorMessage}
+          onClose={() => setErrorMessage("")}
+        />
+      )}
+
       <div className="flex flex-col h-full">
         <div className="p-4 flex justify-between items-center">
           <h2 className="text-lg font-bold sm:pl-4">Godowns</h2>
