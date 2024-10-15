@@ -139,7 +139,7 @@ Details sent via email
 Navigate to the `/frontend` directory and create a `.env` file:
 
 ```bash
-cd ../frontend
+cd ../../frontend
 touch .env
 ```
 
