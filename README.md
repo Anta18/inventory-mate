@@ -8,11 +8,7 @@
 - [Features](#features)
 - [Technologies Used](#technologies-used)
 - [Deployment](#deployment)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Environment Variables](#environment-variables)
-- [Running the Application](#running-the-application)
-- [Accessing the Application](#accessing-the-application)
+- [Running on Local Machine](#running-on-local-machine)
 - [Usage](#usage)
   - [Authentication](#authentication)
   - [Inventory Management](#inventory-management)
@@ -93,7 +89,8 @@ View it here:
   [InventoryAssist](http://157.245.101.236)
 
 
-## Prerequisites
+## Running on Local Machine
+### Prerequisites
 
 Before you begin, ensure you have met the following requirements:
 
@@ -104,7 +101,7 @@ Before you begin, ensure you have met the following requirements:
   ```
 - **Git:** Required for cloning the repository. Download it from [Git's official website](https://git-scm.com/downloads).
 
-## Installation
+### Installation
 
 1. **Clone the Repository**
 
@@ -119,12 +116,12 @@ Before you begin, ensure you have met the following requirements:
    ```
 
 
-## Environment Variables
+### Environment Variables
 
 Inventory Mate uses environment variables to manage configurations for both frontend and backend services. Ensure you have the necessary `.env` files in the appropriate directories.
 
 
-### 1. Backend `.env` File
+#### 1. Backend `.env` File
 
 Navigate to the `/backend` directory and create a `.env` file:
 
@@ -142,7 +139,7 @@ Populate it with backend-specific variables:
 Details sent via email
 ```
 
-### 2. Frontend `.env` File
+#### 2. Frontend `.env` File
 
 Navigate to the `/frontend` directory and create a `.env` file:
 
@@ -159,7 +156,7 @@ VITE_BACKEND_URL=http://localhost:3000
 ```
 
 
-## Running the Application
+### Running the Application
 
 Inventory Assist utilizes Docker to containerize both frontend and backend services. Follow the steps below to build and run the containers.
 
@@ -188,7 +185,7 @@ Inventory Assist utilizes Docker to containerize both frontend and backend servi
    docker-compose ps
    ```
 
-## Accessing the Application
+### Accessing the Application
 
 Once the containers are up and running, access Inventory Mate through your web browser:
 
