@@ -107,16 +107,9 @@ Before you begin, ensure you have met the following requirements:
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/your-username/inventory-assist.git
+   git clone https://github.com/Anta18/inventory-mate.git
    ```
 
-   Replace `your-username` with your GitHub username.
-
-2. **Navigate to the Project Directory**
-
-   ```bash
-   cd inventory-assist
-   ```
 
 ## Environment Variables
 
@@ -130,6 +123,7 @@ Navigate to the `/backend` directory and create a `.env` file:
 ```bash
 cd backend
 mkdir config
+cd config
 touch .env
 ```
 
