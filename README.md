@@ -18,8 +18,9 @@
   - [Inventory Management](#inventory-management)
     - [Navigating the Hierarchical Tree](#navigating-the-hierarchical-tree)
     - [Search Functionality](#search-functionality)
--[Deployment Link](#deployment-link)
--[Demonstration Video](#demonstration-video)
+- [Deployment Link](#deployment-link)
+- [Demonstration Video](#demonstration-video)
+
 
 
 ## Overview
