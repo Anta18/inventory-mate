@@ -66,6 +66,7 @@
   -Every component contains smooth animations
   -A custom sleek and curved scrollbar has been implemented instead of the browser default.
   -Every page has been optimized for all screen sizes
+  -A thin light grey line is shown below every dropdown arrow in expanded state to grasp the hierarchy better(similar to VS Code)
 
 ## Technologies Used
 
