@@ -7,6 +7,7 @@
 - [Overview](#overview)
 - [Features](#features)
 - [Technologies Used](#technologies-used)
+- [Deployment](#deployment)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Environment Variables](#environment-variables)
@@ -74,6 +75,14 @@
 
 - **DevOps:**
   - Docker & Docker Compose
+ 
+## Deployment
+
+The project has been deployed on a DigitalOcean droplet via Nginx
+
+View it here:
+  [InventoryAssist](http://157.245.101.236)
+
 
 ## Prerequisites
 
