@@ -18,6 +18,8 @@
   - [Inventory Management](#inventory-management)
     - [Navigating the Hierarchical Tree](#navigating-the-hierarchical-tree)
     - [Search Functionality](#search-functionality)
+-[Deployment Link](#deployment-link)
+-[Demonstration Video](#demonstartion-video)
 
 
 ## Overview
@@ -58,6 +60,11 @@
 - **Statistics Dashboard**
   - View detailed statistics of overall inventory or specific godowns, subgodowns, brands and categories.
   - Visual representations to aid in data-driven decision-making.
+ 
+-**Design**
+  -Every component contains smooth animations
+  -A custom sleek and curved scrollbar has been implemented instead of the browser default.
+  -Every page has been optimized for all screen sizes
 
 ## Technologies Used
 
@@ -228,3 +235,12 @@ Inventory Assist offers an advanced search feature that significantly enhances t
 - **User-Friendly Interface:**
   - The combination of highlighting and automatic expansion makes it intuitive for users to locate and interact with specific items or godowns.
   - Enhanced visual cues reduce the time and effort required to find and manage inventory entries.
+
+## Deployment Link
+
+  [InventoryAssist](http://157.245.101.236)
+
+
+## Demonstration Video
+
+[Demonstration Video](https://youtu.be/8MjUWXHNz-8)
