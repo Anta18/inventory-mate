@@ -18,7 +18,6 @@
   - [Inventory Management](#inventory-management)
     - [Navigating the Hierarchical Tree](#navigating-the-hierarchical-tree)
     - [Search Functionality](#search-functionality)
-  - [Statistics](#statistics)
 
 
 ## Overview
