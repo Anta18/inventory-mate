@@ -8,18 +8,15 @@
 - [Features](#features)
 - [Technologies Used](#technologies-used)
 - [Deployment](#deployment)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Environment Variables](#environment-variables)
-- [Running the Application](#running-the-application)
-- [Accessing the Application](#accessing-the-application)
+- [Running on Local Machine](#running-on-local-machine)
 - [Usage](#usage)
   - [Authentication](#authentication)
   - [Inventory Management](#inventory-management)
     - [Navigating the Hierarchical Tree](#navigating-the-hierarchical-tree)
     - [Search Functionality](#search-functionality)
--[Deployment Link](#deployment-link)
--[Demonstration Video](#demonstartion-video)
+- [Deployment Link](#deployment-link)
+- [Demonstration Video](#demonstration-video)
+
 
 
 ## Overview
@@ -61,10 +58,12 @@
   - View detailed statistics of overall inventory or specific godowns, subgodowns, brands and categories.
   - Visual representations to aid in data-driven decision-making.
  
--**Design**
-  -Every component contains smooth animations
-  -A custom sleek and curved scrollbar has been implemented instead of the browser default.
-  -Every page has been optimized for all screen sizes
+- **Design**
+  - Every component contains smooth animations
+  - A custom sleek and curved scrollbar has been implemented instead of the browser default.
+  - Every page has been optimized for all screen sizes
+  - A thin light grey line is shown below every dropdown arrow in expanded state to grasp the hierarchy better(similar to VS Code)
+
 
 ## Technologies Used
 
@@ -90,7 +89,8 @@ View it here:
   [InventoryAssist](http://157.245.101.236)
 
 
-## Prerequisites
+## Running on Local Machine
+### Prerequisites
 
 Before you begin, ensure you have met the following requirements:
 
@@ -101,34 +101,34 @@ Before you begin, ensure you have met the following requirements:
   ```
 - **Git:** Required for cloning the repository. Download it from [Git's official website](https://git-scm.com/downloads).
 
-## Installation
+### Installation
 
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/your-username/inventory-assist.git
+   git clone https://github.com/Anta18/inventory-mate.git
    ```
 
-   Replace `your-username` with your GitHub username.
-
-2. **Navigate to the Project Directory**
+2. **Navigate to Folder**
 
    ```bash
-   cd inventory-assist
+   cd inventory-mate
    ```
 
-## Environment Variables
+
+### Environment Variables
 
 Inventory Mate uses environment variables to manage configurations for both frontend and backend services. Ensure you have the necessary `.env` files in the appropriate directories.
 
 
-### 1. Backend `.env` File
+#### 1. Backend `.env` File
 
 Navigate to the `/backend` directory and create a `.env` file:
 
 ```bash
 cd backend
 mkdir config
+cd config
 touch .env
 ```
 
@@ -139,12 +139,12 @@ Populate it with backend-specific variables:
 Details sent via email
 ```
 
-### 2. Frontend `.env` File
+#### 2. Frontend `.env` File
 
 Navigate to the `/frontend` directory and create a `.env` file:
 
 ```bash
-cd ../frontend
+cd ../../frontend
 touch .env
 ```
 
@@ -156,7 +156,7 @@ VITE_BACKEND_URL=http://localhost:3000
 ```
 
 
-## Running the Application
+### Running the Application
 
 Inventory Assist utilizes Docker to containerize both frontend and backend services. Follow the steps below to build and run the containers.
 
@@ -185,7 +185,7 @@ Inventory Assist utilizes Docker to containerize both frontend and backend servi
    docker-compose ps
    ```
 
-## Accessing the Application
+### Accessing the Application
 
 Once the containers are up and running, access Inventory Mate through your web browser:
 
